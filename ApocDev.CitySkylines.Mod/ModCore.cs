@@ -11,22 +11,13 @@ using ICities;
 
 namespace ApocDev.CitySkylines.Mod
 {
-#if !MOD_FIRESPREAD
 	public class ModCore : IUserMod
 	{
 		public string Name { get { return "ApocDev's Mods"; } }
 		public string Description { get { return "A collection of modifications to the game to make the experience all the more better!"; } }
 	}
-#elif MOD_FIRESPREAD
-	public class ModCore : IUserMod
-	{
-		public string Name { get { return "Fire Spread"; } }
-		public string Description { get { return "Because one fire isn't nearly enough."; } }
-	}
-#endif
 
 
-#if !MOD_FIRESPREAD
 	public class CoreLoading : LoadingExtensionBase
 	{
 		private void RunOnPrefabs<TPrefab, TAI>(Action<TAI> runner) where TPrefab : PrefabInfo where TAI : PrefabAI
@@ -62,7 +53,7 @@ namespace ApocDev.CitySkylines.Mod
 				RunOnPrefabs<VehicleInfo, PassengerTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerTrainCapacity);
 				RunOnPrefabs<VehicleInfo, MetroTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.MetroCapacity);
 			}
-			
+
 			// So, for the sake of "fun"
 			// Lets increase the max citizen count ^^
 			ArrayUtils.ResizeArray32(Singleton<CitizenManager>.instance.m_citizens, 10000000);
@@ -76,5 +67,4 @@ namespace ApocDev.CitySkylines.Mod
 		}
 
 	}
-#endif
 }

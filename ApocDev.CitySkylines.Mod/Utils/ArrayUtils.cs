@@ -11,9 +11,8 @@ namespace ApocDev.CitySkylines.Mod.Utils
 		{
 			array.m_size = newSize;
 			Array.Resize(ref array.m_buffer, (int)newSize);
-
-			var unusedCount = (uint)array.GetType().GetField("m_unusedCount").GetValue(array);
-			var unusedItems = (uint[])array.GetType().GetField("m_unusedItems").GetValue(array);
+			var unusedCount = ReflectionUtils.GetField<uint>(array, "m_unusedCount");
+			var unusedItems = ReflectionUtils.GetField<uint[]>(array, "m_unusedItems");
 
 			uint[] newUnusedItems = new uint[newSize];
 			Buffer.BlockCopy(unusedItems, 0, newUnusedItems, 0, 4 * unusedItems.Length);
@@ -28,9 +27,13 @@ namespace ApocDev.CitySkylines.Mod.Utils
 			// This is just adding the newly sized additions.
 			unusedCount += newSize - unusedCount;
 
-			array.GetType().GetField("m_unusedCount").SetValue(array, unusedCount);
-			array.GetType().GetField("m_unusedItems").SetValue(array, newUnusedItems);
+			ReflectionUtils.SetField(array, "m_unusedCount", unusedCount);
+			ReflectionUtils.SetField(array, "m_unusedItems", unusedItems);
+
+			// var nextFree = ReflectionUtils.InvokeMethod<uint>(array, "NextFreeItem");
+			// var nextFree = array.NextFreeItem();
 		}
+
 		public static void ResizeArray16<T>(Array16<T> array, uint newSize)
 		{
 			if (newSize > 0xFFFF)

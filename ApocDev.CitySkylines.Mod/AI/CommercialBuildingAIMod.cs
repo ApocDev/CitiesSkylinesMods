@@ -6,9 +6,9 @@ using ColossalFramework.Math;
 
 using UnityEngine;
 
+// Testing code here ripped from Proper Hardness mod.
 namespace ApocDev.CitySkylines.Mod.AI
 {
-#if !MOD_FIRESPREAD
 	internal class CommercialBuildingAIMod : CommercialBuildingAI
 	{
 		protected override void SimulationStepActive(ushort buildingID, ref Building buildingData, ref Building.Frame frameData)
@@ -124,5 +124,4 @@ namespace ApocDev.CitySkylines.Mod.AI
 			}
 		}
 	}
-#endif
 }

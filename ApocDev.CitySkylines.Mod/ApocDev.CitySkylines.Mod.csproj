@@ -77,10 +77,12 @@
     <Compile Include="FireSpread.cs" />
     <Compile Include="ModCore.cs" />
     <Compile Include="MonoHooks\DotNetFunctionDetour.cs" />
+    <Compile Include="MonoHooks\MonoWrap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QOL\QuickStartMap.cs" />
     <Compile Include="ModSettings.cs" />
     <Compile Include="Utils\ArrayUtils.cs" />
+    <Compile Include="Utils\ReflectionUtils.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
