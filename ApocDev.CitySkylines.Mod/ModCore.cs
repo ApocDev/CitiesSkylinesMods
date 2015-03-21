@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 using ApocDev.CitySkylines.Mod.MonoHooks;
+using ApocDev.CitySkylines.Mod.Utils;
 
 using ColossalFramework;
 
@@ -42,30 +43,7 @@ namespace ApocDev.CitySkylines.Mod
 					runner(ai as TAI);
 			}
 		}
-		void ResizeArray32<T>(Array32<T> array, uint newSize)
-		{
-			array.m_size = newSize;
-			Array.Resize(ref array.m_buffer, (int)newSize);
 
-			var unusedCount = (uint)array.GetType().GetField("m_unusedCount").GetValue(array);
-			var unusedItems = (uint[])array.GetType().GetField("m_unusedItems").GetValue(array);
-
-			uint[] newUnusedItems = new uint[newSize];
-			Buffer.BlockCopy(unusedItems, 0, newUnusedItems, 0, 4 * unusedItems.Length);
-
-			// Now add our own unused items
-			for (uint i = (uint)unusedItems.Length; i < newSize + 1; i++)
-			{
-				newUnusedItems[i - 1] = i;
-			}
-
-			// Update the unusedCount to be in line with the new array size
-			// This is just adding the newly sized additions.
-			unusedCount += newSize - unusedCount;
-
-			array.GetType().GetField("m_unusedCount").SetValue(array, unusedCount);
-			array.GetType().GetField("m_unusedItems").SetValue(array, newUnusedItems);
-		}
 
 		public override void OnLevelLoaded(LoadMode mode)
 		{
@@ -87,7 +65,7 @@ namespace ApocDev.CitySkylines.Mod
 			
 			// So, for the sake of "fun"
 			// Lets increase the max citizen count ^^
-			ResizeArray32(Singleton<CitizenManager>.instance.m_citizens, 10000000);
+			ArrayUtils.ResizeArray32(Singleton<CitizenManager>.instance.m_citizens, 10000000);
 
 			// Need to now resize the "unused" buffers
 
