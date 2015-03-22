@@ -49,7 +49,12 @@ namespace ApocDev.CitySkylines.Mod
 
 			// So, for the sake of "fun"
 			// Lets increase the max citizen count ^^
+			// Default size of this array is 0x100000 which is 1,048,576
+			// We'll set this to basically 10x that size, at 10 million.
 			ArrayUtils.ResizeArray32(Singleton<CitizenManager>.instance.m_citizens, 10000000);
+			// TEST: Need to see if we also need to increase m_instance, and m_units.
+			// m_units = (0x80000) 524288
+			// m_instance = (0x10000) 65536
 
 			//CitizenAIModifications.ApplyWalkingDistanceMod();
 
