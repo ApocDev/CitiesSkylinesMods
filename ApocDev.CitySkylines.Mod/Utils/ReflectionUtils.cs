@@ -42,7 +42,7 @@ namespace ApocDev.CitySkylines.Mod.Utils
 						type.FullName),
 					"methodName");
 			}
-
+			
 			// Note: The invokes here are specifically not in a try/catch. The exception will bubble up to the caller so it can be handled there properly,
 			// rather than suppressing anything we'd do here.
 			if (methodInfo.ReturnType == typeof(void))

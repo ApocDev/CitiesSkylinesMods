@@ -10,11 +10,7 @@ namespace ApocDev.CitySkylines.Mod
 {
 	public class ModSettings
 	{
-#if MOD_FIRESPREAD
-		public const string SettingsPath = "FireSpreadSettings.xml";
-#else
 		public const string SettingsPath = "ApocDevModSettings.xml";
-#endif
 
 
 		[XmlIgnore]
@@ -75,13 +71,15 @@ namespace ApocDev.CitySkylines.Mod
 		{
 #if !MOD_FIRESPREAD
 			// Default: 30
-			BusCapacity = 45;
+			BusCapacity = 90;
 			// Default: 30
-			PassengerTrainCapacity = 60;
+			PassengerTrainCapacity = 480;
 			// Default: 100
 			PassengerShipCapacity = 100;
 			// Default: 30
-			PassengerPlaneCapacity = 75;
+			PassengerPlaneCapacity = 350;
+			// Default: 30
+			MetroCapacity = 360;
 #endif
 
 

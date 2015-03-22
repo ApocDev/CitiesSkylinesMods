@@ -73,6 +73,7 @@
     <Compile Include="AI\CommercialBuildingAIMod.cs" />
     <Compile Include="Chirpy\CustomMessage.cs" />
     <Compile Include="Citizens\CitizenAIMod.cs" />
+    <Compile Include="CoreLoading.cs" />
     <Compile Include="Disasters\MeteorStrike.cs" />
     <Compile Include="FireSpread.cs" />
     <Compile Include="ModCore.cs" />

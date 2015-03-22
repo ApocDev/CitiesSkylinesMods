@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using ColossalFramework;
 
 namespace ApocDev.CitySkylines.Mod.Chirpy
 {
@@ -23,6 +20,11 @@ namespace ApocDev.CitySkylines.Mod.Chirpy
 		public override string GetText()
 		{
 			return _message;
+		}
+
+		public void Show()
+		{
+			Singleton<ChirpPanel>.instance.AddMessage(this, true);
 		}
 	}
 }
