@@ -70,7 +70,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AI\CommercialBuildingAIMod.cs" />
     <Compile Include="Chirpy\CustomMessage.cs" />
     <Compile Include="Citizens\CitizenAIMod.cs" />
     <Compile Include="CoreLoading.cs" />
@@ -84,6 +83,9 @@
     <Compile Include="ModSettings.cs" />
     <Compile Include="Utils\ArrayUtils.cs" />
     <Compile Include="Utils\ReflectionUtils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="AI\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

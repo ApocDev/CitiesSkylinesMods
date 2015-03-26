@@ -1,412 +1,123 @@
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security;
-
-using UnityEngine;
 
 namespace ApocDev.CitySkylines.Mod.MonoHooks
 {
 	internal unsafe class MonoWrap
 	{
-		public enum MonoTypeEnum : uint
+		private static _mono_runtime_free_method_Delegate mono_runtime_free_method;
+
+		public MonoWrap()
 		{
-			// ReSharper disable UnusedMember.Global
-			End = 0x00, /* End of List */
-			Void = 0x01,
-			Boolean = 0x02,
-			Char = 0x03,
-			I1 = 0x04,
-			U1 = 0x05,
-			I2 = 0x06,
-			U2 = 0x07,
-			I4 = 0x08,
-			U4 = 0x09,
-			I8 = 0x0a,
-			U8 = 0x0b,
-			R4 = 0x0c,
-			R8 = 0x0d,
-			String = 0x0e,
-			Ptr = 0x0f, /* arg: <type> token */
-			ByRef = 0x10, /* arg: <type> token */
-			ValueType = 0x11, /* arg: <type> token */
-			Class = 0x12, /* arg: <type> token */
-			Var = 0x13, /* number */
-			Array = 0x14, /* type, rank, boundsCount, bound1, loCount, lo1 */
-			GenericInst = 0x15, /* <type> <type-arg-count> <type-1> \x{2026} <type-n> */
-			TypedByRef = 0x16,
-			I = 0x18,
-			U = 0x19,
-			FnPtr = 0x1b, /* arg: full method signature */
-			Object = 0x1c,
-			SzArray = 0x1d, /* 0-based one-dim-array */
-			Mvar = 0x1e, /* number */
-			CmodReqd = 0x1f, /* arg: typedef or typeref token */
-			CmodOpt = 0x20, /* optional arg: typedef or typref token */
-			Internal = 0x21, /* CLR internal type */
+			var hMono = Process.GetCurrentProcess().Modules.Cast<ProcessModule>().FirstOrDefault(m => m.ModuleName == "mono.dll").BaseAddress;
+			var baseAddr = 0x76FAC;
 
-			Modifier = 0x40, /* Or with the following types */
-			Sentinel = 0x41, /* Sentinel for varargs method signature */
-			Pinned = 0x45, /* Local var that points to pinned object */
-
-			Enum = 0x55 /* an enumeration */
-			// ReSharper restore UnusedMember.Global
+			mono_runtime_free_method =
+				Marshal.GetDelegateForFunctionPointer(new IntPtr(hMono.ToInt64() + baseAddr), typeof(_mono_runtime_free_method_Delegate)) as _mono_runtime_free_method_Delegate;
 		}
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_assembly_open(string fileName, out int status);
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_assembly_foreach(IntPtr callback, IntPtr userData);
-
-		//[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.FastCall)]
-		//[SuppressUnmanagedCodeSecurity]
-		//private static extern IntPtr mono_assembly_get_image(IntPtr assembly);
-
-		static IntPtr mono_assembly_get_image(IntPtr assembly)
-		{
-			return Marshal.ReadIntPtr(new IntPtr(assembly.ToInt64() + 0x58));
-		}
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_class_get_methods(IntPtr klass, IntPtr itr);
 
 		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
 		[SuppressUnmanagedCodeSecurity]
 		private static extern IntPtr mono_method_get_header(IntPtr method);
 
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		[DllImport("mono.dll", CallingConvention = CallingConvention.FastCall, ExactSpelling = true)]
 		[SuppressUnmanagedCodeSecurity]
-		internal static extern IntPtr mono_get_method(IntPtr image, int token, IntPtr @class);
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		internal static extern int mono_metadata_translate_token_index(IntPtr image, int table, uint idx);
+		private static extern IntPtr mono_domain_get();
 
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		[DllImport("mono.dll", CallingConvention = CallingConvention.FastCall, ExactSpelling = true)]
 		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_class_get_fields(IntPtr monoClass, IntPtr itr);
+		private static extern IntPtr mono_compile_method(IntPtr method);
 
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_class_get_parent(IntPtr monoClass);
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_method_get_name(IntPtr methodPtr); // returns char_t*
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.FastCall)]
-		[SuppressUnmanagedCodeSecurity]
-		[return:MarshalAs(UnmanagedType.LPStr)]
-		private static extern string mono_class_get_name(IntPtr classPtr); // returns char_t*
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.FastCall)]
-		[SuppressUnmanagedCodeSecurity]
-		[return: MarshalAs(UnmanagedType.LPStr)]
-		private static extern string mono_class_get_namespace(IntPtr classPtr); // returns char_t*
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_class_get_nesting_type(IntPtr classPtr);
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_method_signature(IntPtr monoMethod);
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern IntPtr mono_class_get(IntPtr image, int token);
-
-		[DllImport("mono.dll", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[SuppressUnmanagedCodeSecurity]
-		private static extern int mono_image_get_table_rows(IntPtr image, int table); // table = 2 = MONO_TABLE_TYPEDEF
-
-		private IEnumerable<IntPtr> AssemblyGetClasses(IntPtr image)
+		public void NativeDetour(MethodInfo targetMethod, MethodInfo detourMethod, out byte[] originalBytes)
 		{
-			var numTypes = mono_image_get_table_rows(image, 2 /*MONO_TABLE_TYPEDEF*/);
+			// Plain old .NET support here.
+			RuntimeHelpers.PrepareMethod(targetMethod.MethodHandle);
+			RuntimeHelpers.PrepareMethod(detourMethod.MethodHandle);
 
-			// Mono expects indices starting at 1, not 0.
-			for (int i = 1; i < numTypes + 1; i++)
+			// 2 birds, 1 stone. Compile targetMethod, and get the func ptr to it.
+			byte* target = (byte*) targetMethod.MethodHandle.GetFunctionPointer();
+			// Force compile this so we can swap it.
+			detourMethod.MethodHandle.GetFunctionPointer();
+
+			// For "unpatching" later
+			originalBytes = new byte[13];
+			for (int i = 0; i < originalBytes.Length; i++)
 			{
-				yield return mono_class_get(image,
-					i | 0x02000000 // MONO_TOKEN_TYPE_DEF
-					);
-			}
-		}
-
-		private string ClassGetName(IntPtr classPtr)
-		{
-			var nested = mono_class_get_nesting_type(classPtr);
-			Debug.Log("[ClassGetName] Nested: " + nested.ToString("X"));
-			string ret = "";
-			while (nested != IntPtr.Zero)
-			{
-				ret = ClassGetName(nested) + "." + ret;
-				Debug.Log("[ClassGetName] ret: " + ret);
-				nested = mono_class_get_nesting_type(nested);
-				Debug.Log("[ClassGetName] Nested: " + nested.ToString("X"));
-			}
-			ret += mono_class_get_name(classPtr);
-			Debug.Log("[ClassGetName] ret: " + ret);
-			return ret;
-		}
-
-		private MonoTypeEnum[] GetMethodArguments(IntPtr monoMethod)
-		{
-			var args = new List<MonoTypeEnum>();
-			IntPtr sigPtr = mono_method_signature(monoMethod);
-
-			if (sigPtr == IntPtr.Zero)
-				return new MonoTypeEnum[0];
-
-			var sig = (MonoMethodSignature) Marshal.PtrToStructure(sigPtr, typeof(MonoMethodSignature));
-
-			IntPtr paramStart = new IntPtr(sigPtr.ToInt64() + Marshal.SizeOf(sig));
-			for (int i = 1; i < sig.param_count + 1; i++)
-			{
-				var paramPtr = Marshal.ReadIntPtr(paramStart, i * IntPtr.Size);
-				var param = ((MonoType) Marshal.PtrToStructure(paramPtr, typeof(MonoType)));
-				var paramType = (MonoTypeEnum) param.type;
-				args.Add(paramType);
+				originalBytes[i] = target[i];
 			}
 
-			return args.ToArray();
+			// TODO: jmp qword [funcPtr]
+			// 5 byte patch to just far jump
+			// Assume x64 shadow space stack is alloc'd correctly for locals
+			// Also assume that the incoming calling convention is proper.
+			//target[0] = 0xEC; // 0xEA maybe?
+			//*((IntPtr*)&target[1]) = detourMethod.MethodHandle.GetFunctionPointer();
+
+			// mono itself uses the r11 register (which isn't good on Windows due to syscall stuff)
+			// So we'll just move to r11, and jmp to r11
+
+			// mov r11, funcptr
+			target[0] = 0x49;
+			target[1] = 0xBB;
+			*((IntPtr*) &target[2]) = detourMethod.MethodHandle.GetFunctionPointer();
+
+			// jmp r11
+			target[10] = 0x41;
+			target[11] = 0xFF;
+			target[12] = 0xE3;
 		}
 
-		internal IntPtr FindClass(string classNamespace, string className)
+		public void ReplaceIL(MethodInfo targetMethod, byte[] newiLBytes, int newMaxStack = -1)
 		{
-			// TODO: Main mono thread checks
-			//UnityEngine.Debug.Log("FindClass assemblyPath: " + assemblyPath);
-			//UnityEngine.Debug.Log("FindClass classNamespace: " + classNamespace);
-			//UnityEngine.Debug.Log("FindClass className: " + className);
+			// TODO: Some IL parsing to make it easier to deal with the locals count maybe?
+			// Just offers mainly debugging support
 
-			IntPtr foundClassPtr = IntPtr.Zero;
-			AssemblyForEachCallback cb = (asm, ud) =>
+			// get the old header
+			var targetHeader = (MonoMethodHeader*) mono_method_get_header(targetMethod.MethodHandle.Value);
+
+			// TODO: Free the original code bytes
+			// This will result in a mem leak if we do a ton of replacements
+			var newCodePtr = Marshal.AllocHGlobal(newiLBytes.Length + 5);
+			Marshal.Copy(newiLBytes, 0, newCodePtr, newiLBytes.Length);
+			targetHeader->code = (byte*) newCodePtr;
+			targetHeader->code_size = (uint) newiLBytes.Length;
+			if (newMaxStack != -1)
 			{
-				if (foundClassPtr != IntPtr.Zero)
-					return;
-
-				//Debug.Log("Assembly: " + asm.ToString("X"));
-				var image = mono_assembly_get_image(asm);
-				//Debug.Log("Image: " + image.ToString("X"));
-				foreach (var classPtr in AssemblyGetClasses(image))
-				{
-					if (classPtr != IntPtr.Zero)
-					{
-						var c = (MonoClass) Marshal.PtrToStructure(classPtr, typeof(MonoClass));
-						//Debug.Log("classPtr: " + classPtr.ToString("X") + ", name: " + c.name + ", namespace: " + c.name_space);
-
-						if (c.name == className && c.name_space == classNamespace)
-						{
-							foundClassPtr = classPtr;
-							break;
-						}
-					}
-				}
-			};
-			var callbackPtr = Marshal.GetFunctionPointerForDelegate(cb);
-			mono_assembly_foreach(callbackPtr, IntPtr.Zero);
-
-			//Debug.Log("Found class ptr: " + foundClassPtr.ToString("X"));
-			return foundClassPtr;
-		}
-
-		internal IntPtr FindMethodPtr(IntPtr monoClass, string methodName, out int index, params MonoTypeEnum[] arguments)
-		{
-			Debug.Log("Searching for " + methodName + " on class " + monoClass.ToString("X"));
-			while (monoClass != IntPtr.Zero)
-			{
-				IntPtr monoMethod;
-				IntPtr itrHandle = Marshal.AllocHGlobal(IntPtr.Size);
-				Marshal.WriteIntPtr(itrHandle, IntPtr.Zero);
-				index = 0;
-				while ((monoMethod = mono_class_get_methods(monoClass, itrHandle)) != IntPtr.Zero)
-				{
-					//Debug.Log("monoMethod: " + monoMethod.ToString("X"));
-					var pMethod = (MonoMethod*) monoMethod;
-					//Debug.Log(pMethod->name);
-
-					var name = pMethod->name;
-
-					if (name == methodName)
-					{
-						Marshal.FreeHGlobal(itrHandle);
-						Debug.Log("Found " + methodName + " at index " + index);
-						return monoMethod;
-					}
-					index++;
-				}
-				Marshal.FreeHGlobal(itrHandle);
-
-				// Iterate to the parent class, and see if the method is in there instead.
-				monoClass = mono_class_get_parent(monoClass);
-				//Log.Debug("\tCould not find in passed type. Trying parent at 0x" + classPtr.ToString("X"));
-			}
-			index = -1;
-			//throw new Exception("Could not find method: " + methodName);
-			return IntPtr.Zero;
-		}
-
-		internal MonoTypeEnum[] BuildFunctionArgs(MethodBase method)
-		{
-			List<MonoTypeEnum> types = new List<MonoTypeEnum>();
-			foreach (var param in method.GetParameters())
-			{
-				if (param.ParameterType == typeof(bool))
-				{
-					types.Add(MonoTypeEnum.Boolean);
-				}
-				else if (param.ParameterType == typeof(char))
-				{
-					types.Add(MonoTypeEnum.Char);
-				}
-				else if (param.ParameterType == typeof(sbyte))
-				{
-					types.Add(MonoTypeEnum.I1);
-				}
-				else if (param.ParameterType == typeof(byte))
-				{
-					types.Add(MonoTypeEnum.U1);
-				}
-				else if (param.ParameterType == typeof(short))
-				{
-					types.Add(MonoTypeEnum.I2);
-				}
-				else if (param.ParameterType == typeof(ushort))
-				{
-					types.Add(MonoTypeEnum.U2);
-				}
-				else if (param.ParameterType == typeof(int))
-				{
-					types.Add(MonoTypeEnum.I4);
-				}
-				else if (param.ParameterType == typeof(uint))
-				{
-					types.Add(MonoTypeEnum.U4);
-				}
-				else if (param.ParameterType == typeof(long))
-				{
-					types.Add(MonoTypeEnum.I8);
-				}
-				else if (param.ParameterType == typeof(ulong))
-				{
-					types.Add(MonoTypeEnum.U8);
-				}
-
-				else if (param.ParameterType == typeof(float))
-				{
-					types.Add(MonoTypeEnum.R4);
-				}
-				else if (param.ParameterType == typeof(double))
-				{
-					types.Add(MonoTypeEnum.R8);
-				}
-				else if (param.ParameterType == typeof(string))
-				{
-					types.Add(MonoTypeEnum.String);
-				}
-				else if (param.ParameterType == typeof(IntPtr))
-				{
-					types.Add(MonoTypeEnum.Ptr);
-				}
-				else if (param.ParameterType.IsValueType)
-				{
-					types.Add(MonoTypeEnum.ValueType);
-				}
-				else if (param.ParameterType.IsClass)
-				{
-					types.Add(MonoTypeEnum.Class);
-				}
-			}
-			return types.ToArray();
-		}
-
-		[StructLayout(LayoutKind.Sequential, Pack = 1)]
-		private struct MonoMethodSignature
-		{
-			// The laziness of PInvoke Interop Assistant to the rescue!
-
-			/// MonoType*
-			internal IntPtr ret;
-
-			/// guint16->WORD->unsigned short
-			internal ushort param_count;
-
-			/// gint16->int
-			internal short sentinelpos;
-
-			/// generic_param_count : 16
-			/// call_convention : 6
-			/// hasthis : 1
-			/// explicit_this : 1
-			/// pinvoke : 1
-			/// is_inflated : 1
-			/// has_type_parameters : 1
-			internal uint bitvector1;
-
-
-			// Params is basically the last part of the method signature.
-			// So we'll use Marshal.Sizeof to get the base size, and read the param array after.
-			// MonoType*[] 0xE
-			// internal IntPtr @params;
-		}
-
-		[StructLayout(LayoutKind.Sequential, Pack = 2)]
-		private struct MonoType
-		{
-			[StructLayout(LayoutKind.Sequential)]
-			internal struct MonoCustomMod
-			{
-				/// required : 1
-				/// token : 31
-				internal uint bitvector1;
-
-				internal uint required { get { return bitvector1 & 1u; } set { bitvector1 = value | bitvector1; } }
-
-				internal uint token
-				{
-					get
-					{
-						return (bitvector1 & 4294967294u)
-						       / 2;
-					}
-					set
-					{
-						bitvector1 = (value * 2)
-						             | bitvector1;
-					}
-				}
+				targetHeader->bitvector1 = newMaxStack & 0x7FFF;
 			}
 
-			/// MonoTypeDataUnion
-			internal IntPtr data;
+			// Free the target method, so we can recompile with new IL
+			mono_runtime_free_method(mono_domain_get(), targetMethod.MethodHandle.GetFunctionPointer());
 
-			/// attrs : 16
-			/// type : 8
-			/// num_mods : 6
-			/// byref : 1
-			/// pinned : 1
-			internal uint bitvector1;
-
-			/// MonoCustomMod[]
-			internal MonoCustomMod modifiers;
-
-			internal uint attrs { get { return bitvector1 & 0xffff; } }
-
-			internal uint type { get { return (bitvector1 & 0xff0000) / 0x10000; } }
-
-			internal uint num_mods { get { return (bitvector1 & 0x3f000000) / 0x1000000; } }
-
-			internal uint byref { get { return (bitvector1 & 0x40000000) / 0x40000000; } }
-
-			internal uint pinned { get { return (bitvector1 & 0x80000000) / 0x80000000; } }
+			// Force-compile the method
+			// Plain old .NET support here.
+			RuntimeHelpers.PrepareMethod(targetMethod.MethodHandle);
+			targetMethod.MethodHandle.GetFunctionPointer();
 		}
+
+		#region Nested type: _mono_runtime_free_method_Delegate
+
+		[UnmanagedFunctionPointer(CallingConvention.FastCall)]
+		internal delegate void _mono_runtime_free_method_Delegate(IntPtr domain, IntPtr method);
+
+		#endregion
+
+		#region Nested type: AssemblyForEachCallback
+
+		[UnmanagedFunctionPointer(CallingConvention.FastCall)] // mono.dll with CS uses rcx, rdx and assumes the callback cleans stack. That's a fastcall folks!
+		internal delegate void AssemblyForEachCallback(IntPtr assembly, IntPtr userData);
+
+		#endregion
+
+		#region Nested type: MonoClass
 
 		[StructLayout(LayoutKind.Sequential)]
-		public unsafe struct MonoClass
+		public struct MonoClass
 		{
 			[StructLayout(LayoutKind.Explicit)]
 			public struct Sizes
@@ -424,10 +135,10 @@ namespace ApocDev.CitySkylines.Mod.MonoHooks
 				public int generic_param_token;
 
 				/// <summary>
-				/// Returns the fully qualified type name of this instance.
+				///     Returns the fully qualified type name of this instance.
 				/// </summary>
 				/// <returns>
-				/// A <see cref="T:System.String"/> containing a fully qualified type name.
+				///     A <see cref="T:System.String" /> containing a fully qualified type name.
 				/// </returns>
 				public override string ToString()
 				{
@@ -445,10 +156,10 @@ namespace ApocDev.CitySkylines.Mod.MonoHooks
 				public uint count;
 
 				/// <summary>
-				/// Returns the fully qualified type name of this instance.
+				///     Returns the fully qualified type name of this instance.
 				/// </summary>
 				/// <returns>
-				/// A <see cref="T:System.String"/> containing a fully qualified type name.
+				///     A <see cref="T:System.String" /> containing a fully qualified type name.
 				/// </returns>
 				public override string ToString()
 				{
@@ -521,26 +232,30 @@ namespace ApocDev.CitySkylines.Mod.MonoHooks
 			/// MonoImage*
 			public IntPtr image;
 
-			private IntPtr name_ptr;
+			private readonly IntPtr name_ptr;
 
 			public string name
 			{
 				get
 				{
 					if (name_ptr == IntPtr.Zero)
+					{
 						return "<INVALID_NAME>";
+					}
 					return Marshal.PtrToStringAnsi(name_ptr);
 				}
 			}
-			
-			private IntPtr name_space_ptr;
+
+			private readonly IntPtr name_space_ptr;
 
 			public string name_space
 			{
 				get
 				{
 					if (name_space_ptr == IntPtr.Zero)
+					{
 						return "<INVALID_NAMESPACE>";
+					}
 					return Marshal.PtrToStringAnsi(name_space_ptr);
 				}
 			}
@@ -627,10 +342,10 @@ namespace ApocDev.CitySkylines.Mod.MonoHooks
 			public IntPtr ext;
 
 			/// <summary>
-			/// Returns the fully qualified type name of this instance.
+			///     Returns the fully qualified type name of this instance.
 			/// </summary>
 			/// <returns>
-			/// A <see cref="T:System.String"/> containing a fully qualified type name.
+			///     A <see cref="T:System.String" /> containing a fully qualified type name.
 			/// </returns>
 			public override string ToString()
 			{
@@ -669,7 +384,7 @@ namespace ApocDev.CitySkylines.Mod.MonoHooks
 						ref_info_handle,
 						marshal_info,
 						fields,
-						(IntPtr)methods,
+						(IntPtr) methods,
 						this_arg,
 						byval_arg,
 						generic_class,
@@ -677,17 +392,18 @@ namespace ApocDev.CitySkylines.Mod.MonoHooks
 						gc_descr,
 						runtime_info,
 						next_class_cache,
-						(IntPtr)vtable,
+						(IntPtr) vtable,
 						ext);
 			}
 		}
 
-		[UnmanagedFunctionPointer(CallingConvention.FastCall)] // mono.dll with CS uses rcx, rdx and assumes the callback cleans stack. That's a fastcall folks!
-		internal delegate void AssemblyForEachCallback(IntPtr assembly, IntPtr userData);
-		[StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+		#endregion
+
+		#region Nested type: MonoMethod
+
+		[StructLayout(LayoutKind.Sequential)]
 		internal struct MonoMethod
 		{
-
 			/// guint16->WORD->unsigned short
 			public ushort flags;
 
@@ -698,218 +414,156 @@ namespace ApocDev.CitySkylines.Mod.MonoHooks
 			public uint token;
 
 			/// MonoClass*
-			public System.IntPtr klass;
+			public IntPtr klass;
 
 			/// MonoMethodSignature*
-			public System.IntPtr signature;
-			
-			private IntPtr name_ptr;
+			public IntPtr signature;
+
+			private readonly IntPtr name_ptr;
 
 			public string name
 			{
 				get
 				{
 					if (name_ptr == IntPtr.Zero)
+					{
 						return "<INVALID_NAME>";
+					}
 					return Marshal.PtrToStringAnsi(name_ptr);
 				}
 			}
 
 			/// inline_info : 1
-			///inline_failure : 1
-			///wrapper_type : 5
-			///string_ctor : 1
-			///save_lmf : 1
-			///dynamic : 1
-			///sre_method : 1
-			///is_generic : 1
-			///is_inflated : 1
-			///skip_visibility : 1
-			///verification_success : 1
-			///is_mb_open : 1
-			///slot : 16
+			/// inline_failure : 1
+			/// wrapper_type : 5
+			/// string_ctor : 1
+			/// save_lmf : 1
+			/// dynamic : 1
+			/// sre_method : 1
+			/// is_generic : 1
+			/// is_inflated : 1
+			/// skip_visibility : 1
+			/// verification_success : 1
+			/// is_mb_open : 1
+			/// slot : 16
 			public uint bitvector1;
 
-			public uint inline_info
-			{
-				get
-				{
-					return ((uint)((this.bitvector1 & 1u)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)((value | this.bitvector1)));
-				}
-			}
+			public uint inline_info { get { return bitvector1 & 1; } set { bitvector1 = value | bitvector1; } }
 
-			public uint inline_failure
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 2u)
-					                / 2)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 2)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint inline_failure { get { return (bitvector1 & 2) / 2; } set { bitvector1 = (value * 2) | bitvector1; } }
 
-			public uint wrapper_type
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 124u)
-					                / 4)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 4)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint wrapper_type { get { return (bitvector1 & 0x7C) / 4; } set { bitvector1 = (value * 4) | bitvector1; } }
 
-			public uint string_ctor
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 128u)
-					                / 128)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 128)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint string_ctor { get { return (bitvector1 & 0x80) / 0x80; } set { bitvector1 = (value * 128) | bitvector1; } }
 
-			public uint save_lmf
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 256u)
-					                / 256)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 256)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint save_lmf { get { return (bitvector1 & 0x100) / 0x100; } set { bitvector1 = (value * 256) | bitvector1; } }
 
-			public uint dynamic
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 512u)
-					                / 512)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 512)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint dynamic { get { return (bitvector1 & 0x200) / 0x200; } set { bitvector1 = (value * 512) | bitvector1; } }
 
-			public uint sre_method
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 1024u)
-					                / 1024)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 1024)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint sre_method { get { return (bitvector1 & 0x400) / 0x400; } set { bitvector1 = (value * 1024) | bitvector1; } }
 
-			public uint is_generic
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 2048u)
-					                / 2048)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 2048)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint is_generic { get { return (bitvector1 & 0x800) / 0x800; } set { bitvector1 = (value * 2048) | bitvector1; } }
 
-			public uint is_inflated
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 4096u)
-					                / 4096)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 4096)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint is_inflated { get { return (bitvector1 & 0x1000) / 0x1000; } set { bitvector1 = (value * 4096) | bitvector1; } }
 
-			public uint skip_visibility
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 8192u)
-					                / 8192)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 8192)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint skip_visibility { get { return (bitvector1 & 0x2000) / 0x2000; } set { bitvector1 = (value * 8192) | bitvector1; } }
 
-			public uint verification_success
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 16384u)
-					                / 16384)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 16384)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint verification_success { get { return (bitvector1 & 0x4000) / 0x4000; } set { bitvector1 = (value * 16384) | bitvector1; } }
 
-			public uint is_mb_open
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 32768u)
-					                / 32768)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 32768)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint is_mb_open { get { return (bitvector1 & 0x8000) / 0x8000; } set { bitvector1 = (value * 32768) | bitvector1; } }
 
-			public uint slot
-			{
-				get
-				{
-					return ((uint)(((this.bitvector1 & 4294901760u)
-					                / 65536)));
-				}
-				set
-				{
-					this.bitvector1 = ((uint)(((value * 65536)
-					                           | this.bitvector1)));
-				}
-			}
+			public uint slot { get { return (bitvector1 & 0xffff0000) / 0x10000; } set { bitvector1 = (value * 65536) | bitvector1; } }
 		}
 
+		#endregion
+
+		#region Nested type: MonoMethodHeader
+
+		[StructLayout(LayoutKind.Sequential)]
+		private struct MonoMethodHeader
+		{
+			public byte* code;
+			public uint code_size;
+			public int bitvector1;
+		}
+
+		#endregion
+
+		#region Nested type: MonoMethodSignature
+
+		[StructLayout(LayoutKind.Sequential, Pack = 1)]
+		private struct MonoMethodSignature
+		{
+			// The laziness of PInvoke Interop Assistant to the rescue!
+
+			/// MonoType*
+			internal readonly IntPtr ret;
+
+			/// guint16->WORD->unsigned short
+			internal readonly ushort param_count;
+
+			/// gint16->int
+			internal readonly short sentinelpos;
+
+			/// generic_param_count : 16
+			/// call_convention : 6
+			/// hasthis : 1
+			/// explicit_this : 1
+			/// pinvoke : 1
+			/// is_inflated : 1
+			/// has_type_parameters : 1
+			internal readonly uint bitvector1;
+
+
+			// Params is basically the last part of the method signature.
+			// So we'll use Marshal.Sizeof to get the base size, and read the param array after.
+			// MonoType*[] 0xE
+			// internal IntPtr @params;
+		}
+
+		#endregion
+
+		#region Nested type: MonoType
+
+		[StructLayout(LayoutKind.Sequential, Pack = 2)]
+		private struct MonoType
+		{
+			[StructLayout(LayoutKind.Sequential)]
+			internal struct MonoCustomMod
+			{
+				/// required : 1
+				/// token : 31
+				internal uint bitvector1;
+
+				internal uint required { get { return bitvector1 & 1u; } set { bitvector1 = value | bitvector1; } }
+
+				internal uint token { get { return (bitvector1 & 4294967294u) / 2; } set { bitvector1 = (value * 2) | bitvector1; } }
+			}
+
+			/// MonoTypeDataUnion
+			internal readonly IntPtr data;
+
+			/// attrs : 16
+			/// type : 8
+			/// num_mods : 6
+			/// byref : 1
+			/// pinned : 1
+			internal readonly uint bitvector1;
+
+			/// MonoCustomMod[]
+			internal readonly MonoCustomMod modifiers;
+
+			internal uint attrs { get { return bitvector1 & 0xffff; } }
+
+			internal uint type { get { return (bitvector1 & 0xff0000) / 0x10000; } }
+
+			internal uint num_mods { get { return (bitvector1 & 0x3f000000) / 0x1000000; } }
+
+			internal uint byref { get { return (bitvector1 & 0x40000000) / 0x40000000; } }
+
+			internal uint pinned { get { return (bitvector1 & 0x80000000) / 0x80000000; } }
+		}
+
+		#endregion
 	}
 }

@@ -29,6 +29,16 @@ namespace ApocDev.CitySkylines.Mod
 			}
 		}
 
+		private void RunOnVehicle<TAI>(ref Vehicle v, Action<TAI> runner) where TAI : VehicleAI
+		{
+			if (runner == null)
+				return;
+
+			var ai = v.Info.GetAI();
+			if (ai is TAI)
+				runner(ai as TAI);
+		}
+
 		public override void OnLevelLoaded(LoadMode mode)
 		{
 			if (mode != LoadMode.NewGame && mode != LoadMode.LoadGame)
@@ -45,6 +55,16 @@ namespace ApocDev.CitySkylines.Mod
 				RunOnPrefabs<VehicleInfo, PassengerShipAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerShipCapacity);
 				RunOnPrefabs<VehicleInfo, PassengerTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerTrainCapacity);
 				RunOnPrefabs<VehicleInfo, MetroTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.MetroCapacity);
+			}
+
+			var inst = Singleton<VehicleManager>.instance.m_vehicles;
+			for (int i = 0; i < inst.m_buffer.Length; i++)
+			{
+				RunOnVehicle<BusAI>(ref inst.m_buffer[i], p => p.m_passengerCapacity = ModSettings.Instance.BusCapacity);
+				RunOnVehicle<PassengerPlaneAI>(ref inst.m_buffer[i], p => p.m_passengerCapacity = ModSettings.Instance.PassengerPlaneCapacity);
+				RunOnVehicle<PassengerShipAI>(ref inst.m_buffer[i], p => p.m_passengerCapacity = ModSettings.Instance.PassengerShipCapacity);
+				RunOnVehicle<PassengerTrainAI>(ref inst.m_buffer[i], p => p.m_passengerCapacity = ModSettings.Instance.PassengerTrainCapacity);
+				RunOnVehicle<MetroTrainAI>(ref inst.m_buffer[i], p => p.m_passengerCapacity = ModSettings.Instance.MetroCapacity);
 			}
 
 			// So, for the sake of "fun"
