@@ -1,16 +1,26 @@
-using System;
-
-using ApocDev.CitySkylines.Mod.Utils;
+﻿using System;
 
 using ColossalFramework;
 
 using ICities;
 
-namespace ApocDev.CitySkylines.Mod
+namespace TransportCapacity
 {
-	public class CoreLoading : LoadingExtensionBase
+	public class TransportCapacityMod : IUserMod
 	{
-		private void RunOnPrefabs<TPrefab, TAI>(Action<TAI> runner) where TPrefab : PrefabInfo where TAI : PrefabAI
+		#region Implementation of IUserMod
+
+		public string Name { get { return "Transport Capacity"; } }
+		public string Description { get { return "Changes the capacity of citizen public transport. A configuration file is available for this mod!"; } }
+
+		#endregion
+	}
+
+	public class TransportCapacityLoading : LoadingExtensionBase
+	{
+		private void RunOnPrefabs<TPrefab, TAI>(Action<TAI> runner)
+			where TPrefab : PrefabInfo
+			where TAI : PrefabAI
 		{
 			if (runner == null)
 			{
@@ -69,18 +79,6 @@ namespace ApocDev.CitySkylines.Mod
 					RunOnVehicle<MetroTrainAI>(ref inst.m_buffer[i], p => p.m_passengerCapacity = ModSettings.Instance.MetroCapacity);
 				}
 			}
-
-
-			// So, for the sake of "fun"
-			// Lets increase the max citizen count ^^
-			// Default size of this array is 0x100000 which is 1,048,576
-			// We'll set this to basically 10x that size, at 10 million.
-			ArrayUtils.ResizeArray32(Singleton<CitizenManager>.instance.m_citizens, 10000000);
-			// TEST: Need to see if we also need to increase m_instance, and m_units.
-			// m_units = (0x80000) 524288
-			// m_instance = (0x10000) 65536
-
-			//CitizenAIModifications.ApplyWalkingDistanceMod();
 
 			base.OnLevelLoaded(mode);
 		}

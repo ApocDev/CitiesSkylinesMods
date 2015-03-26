@@ -5,6 +5,10 @@ VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApocDev.CitySkylines.Mod", "ApocDev.CitySkylines.Mod\ApocDev.CitySkylines.Mod.csproj", "{D770D46F-CEBF-43EF-8B96-9693C44D9351}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoBudget", "AutoBudget\AutoBudget.csproj", "{B306ABD4-F56A-414C-95BE-4DE9017D75D5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportCapacity", "TransportCapacity\TransportCapacity.csproj", "{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{D770D46F-CEBF-43EF-8B96-9693C44D9351}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D770D46F-CEBF-43EF-8B96-9693C44D9351}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D770D46F-CEBF-43EF-8B96-9693C44D9351}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B306ABD4-F56A-414C-95BE-4DE9017D75D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B306ABD4-F56A-414C-95BE-4DE9017D75D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B306ABD4-F56A-414C-95BE-4DE9017D75D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B306ABD4-F56A-414C-95BE-4DE9017D75D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

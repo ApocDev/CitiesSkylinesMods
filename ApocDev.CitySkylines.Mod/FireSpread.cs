@@ -31,7 +31,7 @@ namespace ApocDev.CitySkylines.Mod
 
 		#endregion
 
-		private float GetBuildingFireSpreadChance(ref Building building)
+		internal static float GetBuildingFireSpreadChance(ref Building building)
 		{
 			// Flat 5% chance by default.
 			float chance = ModSettings.Instance.BaseFireSpreadChance;
@@ -53,13 +53,13 @@ namespace ApocDev.CitySkylines.Mod
 			return chance * ModSettings.Instance.FireSpreadModifier;
 		}
 
-		private static float DistanceSqr(ref Vector3 a, ref Vector3 b)
+		internal static float DistanceSqr(ref Vector3 a, ref Vector3 b)
 		{
 			Vector3 vector3 = new Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
 			return vector3.x * vector3.x + vector3.y * vector3.y + vector3.z * vector3.z;
 		}
 
-		private IEnumerable<ushort> GetNearestBuildings(Vector3 position, float radius)
+		internal static IEnumerable<ushort> GetNearestBuildings(Vector3 position, float radius)
 		{
 			// Pulled from NotificationManager.AddWaveEvent
 			var instance = Singleton<BuildingManager>.instance;
@@ -101,7 +101,7 @@ namespace ApocDev.CitySkylines.Mod
 			}
 		}
 
-		private float GetSphereOfInfluence(ref Building building)
+		internal static float GetSphereOfInfluence(ref Building building)
 		{
 			// Blah!
 			// Bigger buildings = bigger influence?
@@ -195,7 +195,7 @@ namespace ApocDev.CitySkylines.Mod
 			return new Randomizer(Environment.TickCount).Int32(0, int.MaxValue) / (float) int.MaxValue;
 		}
 
-		private void LightBuildingOnFire(ushort buildingId, ref Building data)
+		internal static void LightBuildingOnFire(ushort buildingId, ref Building data)
 		{
 			var bm = Singleton<BuildingManager>.instance;
 
@@ -203,7 +203,7 @@ namespace ApocDev.CitySkylines.Mod
 			{
 				return;
 			}
-
+			
 			int fireHazard;
 			int fireSize;
 			int fireTolerance;

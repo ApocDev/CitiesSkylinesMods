@@ -7,5 +7,9 @@ namespace ApocDev.CitySkylines.Mod.Disasters
 {
 	class MeteorStrike
 	{
+		public static void DoMeteorStrike(ushort mainBuildingTargetId)
+		{
+			
+		}
 	}
 }
