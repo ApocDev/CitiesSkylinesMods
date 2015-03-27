@@ -62,13 +62,13 @@ namespace TransportCapacity
 			// Default: 30
 			BusCapacity = 90;
 			// Default: 30
-			PassengerTrainCapacity = 480;
+			PassengerTrainCapacity = 90;
 			// Default: 100
-			PassengerShipCapacity = 100;
+			PassengerShipCapacity = 450;
 			// Default: 30
 			PassengerPlaneCapacity = 350;
 			// Default: 30
-			MetroCapacity = 360;
+			MetroCapacity = 90;
 		}
 	}
 }
