@@ -28,9 +28,6 @@ namespace TransportCapacity
 
 		public static void Load()
 		{
-			if (_instance != null)
-				return;
-
 			XmlSerializer serializer = new XmlSerializer(typeof(ModSettings));
 
 			// If a settings file doesn't exist, have the serializer generate us one.
@@ -59,16 +56,17 @@ namespace TransportCapacity
 
 		public ModSettings()
 		{
+			ModifyTransportCapacities = true;
 			// Default: 30
 			BusCapacity = 90;
 			// Default: 30
-			PassengerTrainCapacity = 90;
+			PassengerTrainCapacity = 160;
 			// Default: 100
-			PassengerShipCapacity = 450;
+			PassengerShipCapacity = 200;
 			// Default: 30
 			PassengerPlaneCapacity = 350;
 			// Default: 30
-			MetroCapacity = 90;
+			MetroCapacity = 140;
 		}
 	}
 }

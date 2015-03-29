@@ -5,6 +5,8 @@ using ColossalFramework.Plugins;
 
 using ICities;
 
+using Object = UnityEngine.Object;
+
 namespace TransportCapacity
 {
 	public class TransportCapacityLoading : LoadingExtensionBase, IUserMod
@@ -16,9 +18,24 @@ namespace TransportCapacity
 
 		#endregion
 
-		private void RunOnPrefabs<TPrefab, TAI>(Action<TAI> runner)
-			where TPrefab : PrefabInfo
-			where TAI : PrefabAI
+		private void RunOnVehicle<TAI>(ref Vehicle v, Action<TAI> runner) where TAI : VehicleAI
+		{
+			if (runner == null)
+			{
+				return;
+			}
+
+			if (v.Info == null)
+				return;
+
+			var ai = v.Info.GetAI() as TAI;
+			if (ai != null)
+			{
+				runner(ai);
+			}
+		}
+
+		private void CreateNewVehicleAI<TPrefab, TAI>(Action<TAI> runner) where TPrefab : VehicleInfo where TAI : VehicleAI
 		{
 			if (runner == null)
 			{
@@ -32,76 +49,50 @@ namespace TransportCapacity
 				var ai = prefab.GetAI();
 				if (ai is TAI)
 				{
-					runner(ai as TAI);
+					// Remove the "old" AI
+					// And create a new one (literally the same AI type)
+					// Then run the "runner" on it which can do things like updating capacities
+					// And ticket prices.
+					Object.Destroy(prefab.GetComponent<TAI>());
+					var newAi = prefab.gameObject.GetComponent<TAI>();
+
+					runner(newAi);
+
+					prefab.m_vehicleAI = newAi;
+					newAi.InitializeAI();
 				}
-			}
-		}
-
-		private void RunOnVehicle<TAI>(ref Vehicle v, Action<TAI> runner) where TAI : VehicleAI
-		{
-			if (runner == null)
-			{
-				return;
-			}
-
-			var ai = v.Info.GetAI();
-			if (ai is TAI)
-			{
-				runner(ai as TAI);
 			}
 		}
 
 		public override void OnLevelLoaded(LoadMode mode)
 		{
+			//base.OnLevelLoaded(mode);
+			//return;
 			if (mode != LoadMode.NewGame && mode != LoadMode.LoadGame)
 			{
 				base.OnLevelLoaded(mode);
 				return;
 			}
 
+			ModSettings.Load();
+
 			if (ModSettings.Instance.ModifyTransportCapacities)
 			{
-				// Do public transit vehicles
-				RunOnPrefabs<VehicleInfo, BusAI>(p => p.m_passengerCapacity = ModSettings.Instance.BusCapacity);
-				RunOnPrefabs<VehicleInfo, PassengerPlaneAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerPlaneCapacity);
-				RunOnPrefabs<VehicleInfo, PassengerShipAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerShipCapacity);
-				RunOnPrefabs<VehicleInfo, PassengerTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerTrainCapacity);
-				RunOnPrefabs<VehicleInfo, MetroTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.MetroCapacity);
+				// Modify prefabs afterwards so that they get loaded with new default values.
+				CreateNewVehicleAI<VehicleInfo, BusAI>(p => p.m_passengerCapacity = ModSettings.Instance.BusCapacity);
+				CreateNewVehicleAI<VehicleInfo, PassengerPlaneAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerPlaneCapacity);
+				CreateNewVehicleAI<VehicleInfo, PassengerShipAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerShipCapacity);
+				CreateNewVehicleAI<VehicleInfo, PassengerTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.PassengerTrainCapacity);
+				CreateNewVehicleAI<VehicleInfo, MetroTrainAI>(p => p.m_passengerCapacity = ModSettings.Instance.MetroCapacity);
 
-
+				
 				// Update already-created stuff with new passenger capacities.
 				// Note: this will also update the transport "lines" with new capacities, since it just calls to vehicles under the hood.
 				var inst = Singleton<VehicleManager>.instance.m_vehicles;
-
-				var transport = Singleton<TransportManager>.instance;
-				for (int i = 0; i < transport.m_lines.m_size; i++)
+				// Fuck it, update every single vehicle if we can.
+				for (int i = 0; i < inst.m_buffer.Length; i++)
 				{
-					var line = transport.m_lines.m_buffer[i];
-
-					var vehicles = line.m_vehicles;
-					int iterCount = 0;
-
-					// So each line has "vehicles" that also have sub-vehicles in the case of train/metro
-					// And then it has a "pointer" to a next vehicle in the line.
-					// m_vehicles is the "first" vehicle for the transport line
-					while (vehicles != 0)
-					{
-						// So, while CO's API is already pretty bad in terms of "good practice" C#
-						// The need to create tiny wrapper funcs so we can get structures as a by-ref is quite a pain.
-						// I understand the need for it, since they act as "bulk storage" with high throughput
-						// But at the same time you wind up with an API that is clumsy and bulky in the long run.
-						// Oh well, nothing I can do about it now.
-						UpdateTransportLineVehicle(ref inst.m_buffer[vehicles], line.m_lineNumber);
-
-						var nextLineVehicle = inst.m_buffer[vehicles].m_nextLineVehicle;
-
-						vehicles = nextLineVehicle;
-
-						if (++iterCount > 0x4000)
-						{
-							break;
-						}
-					}
+					UpdateCreatedVehicle(ref inst.m_buffer[i], (ushort)i);
 				}
 			}
 
@@ -113,58 +104,52 @@ namespace TransportCapacity
 			DebugOutputPanel.AddMessage(PluginManager.MessageType.Warning, message);
 		}
 
-		private void UpdateTransportLineVehicle(ref Vehicle vehicle, ushort lineNumber)
+		private void UpdateCreatedVehicle(ref Vehicle vehicle, ushort vehicleId)
 		{
-			RunOnVehicle<BusAI>(ref vehicle,
-				p =>
-				{
-					p.m_passengerCapacity = ModSettings.Instance.BusCapacity;
-					DebugMessage("Updated bus to capacity " + ModSettings.Instance.BusCapacity + " on line " + lineNumber);
-				});
-			RunOnVehicle<PassengerPlaneAI>(ref vehicle,
-				p =>
-				{
-					p.m_passengerCapacity = ModSettings.Instance.PassengerPlaneCapacity;
-					DebugMessage("Updated passenger plane to capacity " + ModSettings.Instance.PassengerPlaneCapacity + " on line " + lineNumber);
-				});
-			RunOnVehicle<PassengerShipAI>(ref vehicle,
-				p =>
-				{
-					p.m_passengerCapacity = ModSettings.Instance.PassengerShipCapacity;
-					DebugMessage("Updated passenger ship to capacity " + ModSettings.Instance.PassengerShipCapacity + " on line " + lineNumber);
-				});
-			RunOnVehicle<PassengerTrainAI>(ref vehicle,
-				p =>
-				{
-					p.m_passengerCapacity = ModSettings.Instance.PassengerTrainCapacity;
-					if (p.m_info.m_trailers != null && p.m_info.m_trailers.Length > 0)
-					{
-						foreach (var trailer in p.m_info.m_trailers)
-						{
-							if (trailer.m_info.m_class.m_service == ItemClass.Service.PublicTransport && trailer.m_info.m_class.m_subService == ItemClass.SubService.PublicTransportTrain)
-							{
-								(trailer.m_info.m_vehicleAI as PassengerTrainAI).m_passengerCapacity = ModSettings.Instance.PassengerTrainCapacity;
-								DebugMessage("Updated passenger train to capacity " + ModSettings.Instance.PassengerTrainCapacity + " on line " + lineNumber);
-							}
-						}
-					}
-				});
-			RunOnVehicle<MetroTrainAI>(ref vehicle,
-				p =>
-				{
-					p.m_passengerCapacity = ModSettings.Instance.MetroCapacity;
-					if (p.m_info.m_trailers != null && p.m_info.m_trailers.Length > 0)
-					{
-						foreach (var trailer in p.m_info.m_trailers)
-						{
-							if (trailer.m_info.m_class.m_service == ItemClass.Service.PublicTransport && trailer.m_info.m_class.m_subService == ItemClass.SubService.PublicTransportMetro)
-							{
-								(trailer.m_info.m_vehicleAI as MetroTrainAI).m_passengerCapacity = ModSettings.Instance.MetroCapacity;
-								DebugMessage("Updated passenger train to capacity " + ModSettings.Instance.MetroCapacity + " on line " + lineNumber);
-							}
-						}
-					}
-				});
+			// Now comes the fun part, we need to create the extra units per-vehicle
+			// So that the capacity can be properly raised to the values we want.
+			// Actual math here is (passengerCapacity+4)/5 units created, per vehicle.
+
+			int newCapacity = 0;
+			RunOnVehicle<BusAI>(ref vehicle, p => newCapacity = p.m_passengerCapacity);
+			RunOnVehicle<PassengerPlaneAI>(ref vehicle, p => newCapacity = p.m_passengerCapacity);
+			RunOnVehicle<PassengerShipAI>(ref vehicle, p => newCapacity = p.m_passengerCapacity);
+			RunOnVehicle<PassengerTrainAI>(ref vehicle, p => newCapacity = p.m_passengerCapacity);
+			RunOnVehicle<MetroTrainAI>(ref vehicle, p => newCapacity = p.m_passengerCapacity);
+
+
+			if (newCapacity != 0)
+			{
+				// Release the current units, and create new ones. This is what effectively increases the capacity
+				// on already-created units.
+				// Note: Other mods do not call ReleaseUnits here, which ends up leaking units, and hitting the unit cap
+				// Specifically call ReleaseUnits here so that we're not choking the game of possible usable resources.
+
+				uint firstUnitId;
+				Singleton<CitizenManager>.instance.ReleaseUnits(vehicle.m_citizenUnits);
+
+				Singleton<CitizenManager>.instance.CreateUnits(out firstUnitId,
+					ref SimulationManager.instance.m_randomizer,
+					0,
+					vehicleId,
+					0,
+					0,
+					0,
+					newCapacity,
+					0);
+
+				vehicle.m_citizenUnits = firstUnitId;
+			}
+		}
+
+		/// <summary>
+		/// Because CO uses struct refs in their code. This is ever so slightly faster than just replacing the structure at the given index in the m_units array.
+		/// </summary>
+		/// <param name="unit"></param>
+		/// <param name="next"></param>
+		void SetNextUnit(ref CitizenUnit unit, uint next)
+		{
+			unit.m_nextUnit = next;
 		}
 	}
 }
