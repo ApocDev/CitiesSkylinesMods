@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoBudget", "AutoBudget\Au
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransportCapacity", "TransportCapacity\TransportCapacity.csproj", "{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CostsOverhaul", "CostsOverhaul\CostsOverhaul.csproj", "{1D696C67-BC3B-4195-8DF1-5A9A70C691B9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E8CA4299-A2C6-436B-B7FE-AA53F6F2EA57}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1D696C67-BC3B-4195-8DF1-5A9A70C691B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1D696C67-BC3B-4195-8DF1-5A9A70C691B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1D696C67-BC3B-4195-8DF1-5A9A70C691B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1D696C67-BC3B-4195-8DF1-5A9A70C691B9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

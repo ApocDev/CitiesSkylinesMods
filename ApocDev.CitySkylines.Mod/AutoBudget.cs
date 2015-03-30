@@ -31,6 +31,9 @@ namespace ApocDev.CitySkylines.Mod
 			return (num * num2);
 		}
 
+
+		
+
 		#region Overrides of ThreadingExtensionBase
 
 		public override void OnAfterSimulationTick()
